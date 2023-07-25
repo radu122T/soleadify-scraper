@@ -1,0 +1,41 @@
+# Stage 1 - Building
+FROM node:16 AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# Install Puppeteer dependencies
+RUN apt-get update \
+    && apt-get install -y wget gnupg ca-certificates \
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN npm install
+
+COPY . .
+
+RUN npm run build
+
+# Stage 2 - Running
+FROM node:16
+
+WORKDIR /app
+
+# Install Puppeteer dependencies
+RUN apt-get update \
+    && apt-get install -y wget gnupg ca-certificates \
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app .
+
+EXPOSE 6004
+
+CMD ["npm", "run", "start:prod"]
